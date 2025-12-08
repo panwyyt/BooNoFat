@@ -11,12 +11,12 @@
             --bg-grad: linear-gradient(135deg, #2b1055, #7597de);
             --glass-bg: rgba(255, 255, 255, 0.1);
             --glass-border: rgba(255, 255, 255, 0.2);
-            --cyan: #00fff2; --red: #ff4d4d; --yellow: #ffd700;
+            --cyan: #00fff2; --red: #ff4d4d; --yellow: #ffd700; --green: #00ff88;
         }
         * { box-sizing: border-box; transition: all 0.3s ease; user-select: none; -webkit-tap-highlight-color: transparent; }
         body { margin: 0; font-family: 'Kanit', sans-serif; background: var(--bg-grad); color: #fff; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
         
-        /* Layout Handling via State Classes */
+        /* Layout Handling */
         body.view-workout #setup-screen { display: none; }
         body.view-workout #workout-screen { display: flex; }
         
@@ -36,11 +36,23 @@
         .neu-input:focus { outline: none; background: rgba(255,255,255,0.2); }
         input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
-        /* Main Button */
+        /* Main Start Button */
         .action-btn { width: 100%; padding: 20px; font-size: 1.5rem; font-weight: 600; border-radius: 20px; border: 1px solid var(--glass-border); background: var(--glass-bg); color: var(--cyan); margin-top: 15px; cursor: pointer; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
-        
-        /* Stop Button State */
-        body.view-workout .action-btn { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); width: 85%; max-width: 400px; background: rgba(255, 0, 0, 0.2); color: var(--red); z-index: 100; }
+        .action-btn:hover { background: rgba(255,255,255,0.15); }
+
+        /* Control Bar (Pause/Stop) */
+        .control-bar {
+            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 20px; width: 85%; max-width: 400px; z-index: 100;
+        }
+        .ctrl-btn {
+            flex: 1; padding: 15px; border-radius: 20px; border: 1px solid var(--glass-border);
+            font-size: 1.5rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px); box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        .btn-stop { background: rgba(255, 77, 77, 0.2); color: var(--red); }
+        .btn-pause { background: rgba(255, 215, 0, 0.2); color: var(--yellow); }
+        .btn-resume { background: rgba(0, 255, 136, 0.2); color: var(--green); }
 
         /* Mute Button */
         .mute-btn-fixed { position: fixed; top: 20px; right: 20px; z-index: 200; }
@@ -51,11 +63,15 @@
         /* Workout Screen */
         #workout-screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; position: absolute; top: 0; }
         .round-pill { padding: 8px 25px; border-radius: 50px; background: var(--glass-bg); border: 1px solid var(--glass-border); margin-bottom: 20px; }
-        .phase-badge { font-size: 4rem; font-weight: 700; text-transform: uppercase; text-shadow: 0 0 20px currentColor; }
-        .timer-big { font-size: 25vw; font-weight: 600; line-height: 1; text-shadow: 0 0 30px rgba(255,255,255,0.8); }
+        .phase-badge { font-size: 4rem; font-weight: 700; text-transform: uppercase; text-shadow: 0 0 20px currentColor; text-align: center; }
+        .timer-big { font-size: 25vw; font-weight: 600; line-height: 1; text-shadow: 0 0 30px rgba(255,255,255,0.8); margin: 10px 0; }
+        .paused-text { font-size: 1.2rem; letter-spacing: 2px; color: var(--yellow); opacity: 0; transition: opacity 0.3s; margin-top: -20px; margin-bottom: 20px;}
+        body.is-paused .paused-text { opacity: 1; animation: blink 1.5s infinite; }
+        body.is-paused .timer-big { opacity: 0.5; }
+
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
         @media (min-width: 600px) { .timer-big { font-size: 10rem; } }
         
-        .text-cyan { color: var(--cyan); } .text-red { color: var(--red); } .text-yellow { color: var(--yellow); }
         .footer-credit { margin-top: 25px; font-size: 0.8rem; color: #a0a0a0; }
         .footer-credit a { color: #fff; text-decoration: none; border-bottom: 1px dotted #fff; }
     </style>
@@ -77,28 +93,53 @@
 
         <div id="settings-container"></div>
 
-        <button id="main-btn" class="action-btn" onclick="toggleWorkout()">START</button>
+        <button id="main-btn" class="action-btn" onclick="startWorkout()">START WORKOUT</button>
         <div class="footer-credit">Created with ❤️ by <a href="https://www.instagram.com/mylilboo/" target="_blank">mylilboo</a></div>
     </div>
 
     <div id="workout-screen">
         <div id="round-display" class="round-pill"></div>
         <div id="phase-title" class="phase-badge text-cyan"></div>
-        <div id="quote-display" style="height: 25px; font-style: italic; margin-bottom: 5px;"></div>
+        <div id="quote-display" style="height: 25px; font-style: italic; margin-bottom: 5px; text-align: center; padding: 0 10px;"></div>
         <div id="timer-display" class="timer-big"></div>
+        <div class="paused-text">PAUSED</div>
+
+        <div class="control-bar">
+            <button class="ctrl-btn btn-stop" onclick="stopWorkout()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+            </button>
+            <button id="play-pause-btn" class="ctrl-btn btn-pause" onclick="togglePause()">
+                </button>
+        </div>
     </div>
 
     <script>
         // --- State & Config ---
         let state = { work: 30, rest: 15, rounds: 6, speedLevel: 3 };
-        let app = { timer: null, timeLeft: 0, currentRound: 1, isRunning: false, phase: 'stopped', muted: false, wakeLock: null, audioCtx: new (window.AudioContext || window.webkitAudioContext)() };
-        const quotes = {
-            work: ["โยกหัวหลุด!", "เอาให้ตาแตก!", "เร็วกว่านี้!", "ไฟลุกแล้ววว!"],
-            rest: ["พักสายตาเถอะนะ", "หายใจเข้า...", "นิ่งๆ ไว้", "เตรียมระเบิดพลัง"],
-            ready: ["เตรียมตัวแสบตา...", "พร้อมมั้ย?", "3.. 2.. 1.."]
+        let app = { 
+            timer: null, 
+            timeLeft: 0, 
+            currentRound: 1, 
+            isRunning: false, 
+            isPaused: false,
+            phase: 'stopped', 
+            muted: false, 
+            wakeLock: null, 
+            audioCtx: new (window.AudioContext || window.webkitAudioContext)() 
         };
 
-        // --- Render UI Settings (Dynamic Generation to reduce HTML bloat) ---
+        const quotes = {
+            work: ["โยกหัวหลุด!", "เอาให้ตาแตก!", "เร็วกว่านี้!", "ไฟลุกแล้ววว!", "อย่าเพิ่งตาย!"],
+            rest: ["พักสายตาเถอะนะ", "หายใจเข้าลึกๆ", "นิ่งๆ ไว้", "เตรียมระเบิดพลัง", "จิบน้ำเบาๆ"],
+            ready: ["เตรียมตัวแสบตา...", "พร้อมมั้ย?", "3.. 2.. 1..", "ตั้งสติ!"]
+        };
+
+        const icons = {
+            pause: `<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`,
+            play: `<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`
+        };
+
+        // --- Init & Storage ---
         const configMap = [
             { id: 'work', label: 'เวลาลุย (วิ)', step: 5, min: 5 },
             { id: 'rest', label: 'เวลาพัก (วิ)', step: 5, min: 0 },
@@ -106,32 +147,52 @@
             { id: 'speedLevel', label: 'ความเร็วเสียง', step: 1, min: 1, max: 5, readonly: true }
         ];
 
-        const container = document.getElementById('settings-container');
-        configMap.forEach(cfg => {
-            container.innerHTML += `
-            <div class="setting-row">
-                <div>${cfg.label}</div>
-                <div class="controls">
-                    <button class="neu-btn" onclick="adjust('${cfg.id}', -${cfg.step})">-</button>
-                    <input type="number" id="val-${cfg.id}" class="neu-input" value="${state[cfg.id]}" 
-                           onchange="adjust('${cfg.id}', 0, this.value)" ${cfg.readonly ? 'readonly' : ''}>
-                    <button class="neu-btn" onclick="adjust('${cfg.id}', ${cfg.step})">+</button>
-                </div>
-            </div>`;
-        });
-        updateTotalCalc();
+        window.onload = () => {
+            loadSettings();
+            renderSettings();
+        };
 
-        // --- Core Functions ---
+        function renderSettings() {
+            const container = document.getElementById('settings-container');
+            container.innerHTML = '';
+            configMap.forEach(cfg => {
+                container.innerHTML += `
+                <div class="setting-row">
+                    <div>${cfg.label}</div>
+                    <div class="controls">
+                        <button class="neu-btn" onclick="adjust('${cfg.id}', -${cfg.step})">-</button>
+                        <input type="number" id="val-${cfg.id}" class="neu-input" value="${state[cfg.id]}" 
+                               onchange="adjust('${cfg.id}', 0, this.value)" ${cfg.readonly ? 'readonly' : ''}>
+                        <button class="neu-btn" onclick="adjust('${cfg.id}', ${cfg.step})">+</button>
+                    </div>
+                </div>`;
+            });
+            updateTotalCalc();
+        }
+
+        function loadSettings() {
+            const saved = localStorage.getItem('hiitConfig');
+            if (saved) {
+                try { state = JSON.parse(saved); } catch (e) { console.error('Load config failed'); }
+            }
+        }
+
+        function saveSettings() {
+            localStorage.setItem('hiitConfig', JSON.stringify(state));
+        }
+
         function adjust(key, delta, manualVal = null) {
             let val = manualVal !== null ? parseInt(manualVal) : state[key] + delta;
-            // Bounds checking
             const conf = configMap.find(c => c.id === key);
+            
+            if (isNaN(val)) val = conf.min;
             if (val < (conf.min || 1)) val = conf.min || 1;
             if (conf.max && val > conf.max) val = conf.max;
             
             state[key] = val;
             document.getElementById(`val-${key}`).value = val;
             updateTotalCalc();
+            saveSettings(); // Auto save
         }
 
         function updateTotalCalc() {
@@ -141,53 +202,89 @@
 
         // --- Audio Logic ---
         function playBeep(freq = 440, type = 'square') {
-            if (app.muted) return;
+            if (app.muted || app.isPaused) return;
             if (app.audioCtx.state === 'suspended') app.audioCtx.resume();
+            
             const osc = app.audioCtx.createOscillator();
             const gain = app.audioCtx.createGain();
+            
             osc.connect(gain); gain.connect(app.audioCtx.destination);
             osc.frequency.value = freq; osc.type = type;
+            
             gain.gain.setValueAtTime(0.5, app.audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.01, app.audioCtx.currentTime + 0.1);
+            
             osc.start(); osc.stop(app.audioCtx.currentTime + 0.1);
         }
 
         let soundLoop;
         function setPartyMode(active) {
             const body = document.body;
+            clearInterval(soundLoop);
+            
             if (active) {
                 body.classList.add('party-mode');
-                clearInterval(soundLoop);
                 let delay = 600 - (state.speedLevel * 100);
                 soundLoop = setInterval(() => playBeep(880, 'sawtooth'), delay);
             } else {
                 body.classList.remove('party-mode');
-                clearInterval(soundLoop);
             }
         }
 
-        // --- Main Workflow ---
-        async function toggleWorkout() {
-            if (app.isRunning) return stopWorkout();
-            
-            // Start
+        // --- Workflow ---
+        async function startWorkout() {
             app.isRunning = true;
+            app.isPaused = false;
             app.currentRound = 1;
-            document.body.classList.add('view-workout'); // Switch View CSS
-            document.getElementById('main-btn').innerText = "STOP";
+            
+            document.body.classList.add('view-workout');
+            document.body.classList.remove('is-paused');
             
             try { app.wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
+            
+            updatePauseBtnUI();
             startPhase('ready');
         }
 
         function stopWorkout() {
             app.isRunning = false;
+            app.isPaused = false;
             clearInterval(app.timer);
             setPartyMode(false);
+            
             if (app.wakeLock) app.wakeLock.release();
             
-            document.body.classList.remove('view-workout'); // Switch View CSS
-            document.getElementById('main-btn').innerText = "START";
+            document.body.classList.remove('view-workout');
+            document.body.classList.remove('is-paused');
+        }
+
+        function togglePause() {
+            app.isPaused = !app.isPaused;
+            const body = document.body;
+
+            if (app.isPaused) {
+                // Pause Action
+                clearInterval(app.timer);
+                setPartyMode(false); // Stop sound
+                body.classList.add('is-paused');
+            } else {
+                // Resume Action
+                body.classList.remove('is-paused');
+                if (app.phase === 'work') setPartyMode(true); // Resume sound if work
+                runTimer(); // Resume timer
+            }
+            updatePauseBtnUI();
+        }
+
+        function updatePauseBtnUI() {
+            const btn = document.getElementById('play-pause-btn');
+            if (app.isPaused) {
+                btn.innerHTML = icons.play;
+                btn.className = 'ctrl-btn btn-resume';
+            } else {
+                btn.innerHTML = icons.pause;
+                btn.className = 'ctrl-btn btn-pause';
+            }
         }
 
         function startPhase(phase) {
@@ -203,8 +300,8 @@
 
             els.round.innerText = `รอบที่ ${app.currentRound} / ${state.rounds}`;
             
-            // Config Phase
             let duration, color, titleText, quoteList, party = false;
+            
             if (phase === 'ready') {
                 duration = 5; color = 'var(--yellow)'; titleText = 'เตรียมตัว'; quoteList = quotes.ready;
             } else if (phase === 'work') {
@@ -215,14 +312,16 @@
 
             app.timeLeft = duration;
             els.title.innerText = titleText;
-            els.title.className = `phase-badge`; // Reset class
             els.title.style.color = color;
             els.timer.style.color = color;
             els.quote.innerText = quoteList[Math.floor(Math.random() * quoteList.length)];
             
             setPartyMode(party);
             updateTimerDisplay();
+            runTimer();
+        }
 
+        function runTimer() {
             app.timer = setInterval(() => {
                 app.timeLeft--;
                 updateTimerDisplay();
@@ -233,8 +332,11 @@
         function nextPhase() {
             if (app.phase === 'ready') return startPhase('work');
             if (app.phase === 'work') {
-                if (app.currentRound >= state.rounds && state.rest === 0) return stopWorkout();
-                if (app.currentRound >= state.rounds) return stopWorkout(); // End after last work if you prefer
+                if (app.currentRound >= state.rounds) return stopWorkout();
+                if (state.rest === 0) { // No rest mode
+                    app.currentRound++;
+                    return startPhase('work');
+                }
                 return startPhase('rest');
             }
             if (app.phase === 'rest') {
@@ -245,7 +347,7 @@
         }
 
         function updateTimerDisplay() {
-            document.getElementById('timer-display').innerText = app.timeLeft;
+            document.getElementById('timer-display').innerText = app.timeLeft >= 0 ? app.timeLeft : 0;
         }
 
         function toggleMute() {
@@ -253,9 +355,9 @@
             document.getElementById('mute-btn').classList.toggle('muted', app.muted);
         }
         
-        // Re-acquire wake lock if tab changed
+        // Visibility API to keep WakeLock fresh
         document.addEventListener('visibilitychange', async () => {
-            if (app.isRunning && document.visibilityState === 'visible') {
+            if (app.isRunning && !app.isPaused && document.visibilityState === 'visible') {
                 try { app.wakeLock = await navigator.wakeLock.request('screen'); } catch(e){}
             }
         });
